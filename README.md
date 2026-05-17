@@ -1,11 +1,8 @@
-git clone https://github.com/你的用户名/photo-album.git
+git clone https://github.com/lje02/bot/photo-album.git
 cd photo-album
 bash install.sh
 
 
-bash install.sh          # 默认：构建 + 本地预览（localhost:3000）
-bash install.sh --dev    # 开发模式，热重载（localhost:5173）
-bash install.sh --build  # 仅构建 dist/，用于上传到服务器
 
 photo-album/
 ├── src/
