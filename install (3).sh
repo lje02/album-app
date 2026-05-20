@@ -1548,10 +1548,13 @@ info "  Ubuntu: sudo apt-get install -y build-essential python3"
 info "  CentOS: sudo yum groupinstall 'Development Tools'"
 echo ""
 
-npm install --prefer-offline --no-audit --no-fund 2>&1 | \
-  grep -E "^(added|warn|error|npm err)" | head -8 || {
+# 开启 pipefail，确保管道中任何命令失败都能被捕捉
+set -o pipefail
+
+# 使用 --include=dev 确保在 NODE_ENV=production 环境下也会安装 vite
+npm install --include=dev --prefer-offline --no-audit --no-fund || {
   echo ""
-  error "依赖安装失败，请检查上方错误信息"
+  error "依赖安装失败！由于 better-sqlite3 需要编译，请确保已安装 gcc/g++ 和 python3。"
 }
 success "依赖安装完成"
 
