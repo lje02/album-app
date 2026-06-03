@@ -34,4 +34,4 @@ git clone git://git.kernel.org/pub/scm/git/git.git
 ## 一键安装
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/lje02/tgdown-web/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/lje02/tgdown-web/main/install-enhanced.sh)
