@@ -1,0 +1,5 @@
+pyrogram==2.0.106
+TgCrypto==1.2.5
+python-dotenv==1.0.1
+psutil==5.9.6
+aiofiles==23.2.1
