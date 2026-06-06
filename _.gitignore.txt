@@ -1,0 +1,30 @@
+# 敏感配置 — 绝对不能上传到 GitHub
+.env
+
+# Pyrogram 登录 Session（含账号凭证）
+session/
+*.session
+*.session-journal
+
+# 下载文件（体积大，无需版本控制）
+downloads/
+
+# 数据库
+tg_downloader.db
+
+# Docker 自动生成文件（由 setup.sh 创建）
+Dockerfile
+docker-compose.yml
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# 日志
+*.log
