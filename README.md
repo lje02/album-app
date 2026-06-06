@@ -15,13 +15,25 @@
 curl -fsSL https://get.docker.com | sh
 ```
 
+git安装:
+sudo apt install git-all
+
+git更新:
+git clone git://git.kernel.org/pub/scm/git/git.git
+
+python3安装:
+apt update && apt install python3.11-venv -y
+
 ---
 
 ## 🚀 安装（三步完成）
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/你的用户名/你的仓库名.git
+git clone https://github.com/lje02/tg_downloader.git
+cd tg_downloader
+
+https://github.com/你的用户名/你的仓库名.git
 cd 你的仓库名
 
 # 2. 给脚本加执行权限
