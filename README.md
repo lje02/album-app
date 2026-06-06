@@ -16,12 +16,15 @@ curl -fsSL https://get.docker.com | sh
 ```
 
 git安装:
+
 sudo apt install git-all
 
 git更新:
+
 git clone git://git.kernel.org/pub/scm/git/git.git
 
 python3安装:
+
 apt update && apt install python3.11-venv -y
 
 ---
