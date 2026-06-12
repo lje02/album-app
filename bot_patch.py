@@ -1,24 +1,3 @@
-# ══════════════════════════════════════════════════════════════════
-#  [新增] URL 扫描 & 媒体批量下载功能  v2.0
-#  将此代码块追加到主脚本 bot.py 的 if __name__ == "__main__": 之前
-#  无需修改任何原有代码。
-# ══════════════════════════════════════════════════════════════════
-#
-# 依赖安装（首次使用前执行）：
-#   pip install aiohttp beautifulsoup4
-#
-# .env 可选配置项（均有默认值，不配置也能直接使用）：
-#   URL_MIN_FILE_SIZE=102400     # 图片过滤阈值，默认 100 KB
-#   URL_MIN_VIDEO_SIZE=524288    # 视频过滤阈值，默认 512 KB
-#   URL_MIN_AUDIO_SIZE=51200     # 音频过滤阈值，默认 50 KB
-#   URL_DL_CONCURRENCY=4         # 图片并发下载数
-#   URL_DL_CONCURRENCY_V=2       # 视频并发下载数（大文件建议保守）
-#   URL_DL_CONCURRENCY_A=3       # 音频并发下载数
-#   URL_DL_TIMEOUT_VIDEO=600     # 视频单文件超时(s)，大文件可调大
-#   URL_MAX_IMAGES=200           # 单次最多处理文件数
-#   URL_PROGRESS_EVERY=3         # 每 N 个更新一次进度消息
-# ──────────────────────────────────────────────────────────────────
-
 from url_scanner import scan_and_download, MIN_FILE_SIZE, MIN_VIDEO_SIZE, MIN_AUDIO_SIZE
 from url_scanner import fmt_size as sc_fmt   # 避免与主脚本同名函数冲突
 
