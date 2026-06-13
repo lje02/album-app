@@ -167,6 +167,8 @@ EOF
 pyrogram==2.0.106
 tgcrypto
 python-dotenv
+aiohttp
+beautifulsoup4
 yt-dlp
 gallery-dl
 REQ
