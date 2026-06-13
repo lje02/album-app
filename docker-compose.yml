@@ -8,7 +8,7 @@ services:
       - UMASK=022
     volumes:
       - ./data:/opt/alist/data
-      - /root/tg_downloader/bots/downloader/downloads:/media
+      - /root/tg_download/downloads:/media
     ports:
       - "127.0.0.1:5244:5244"
     networks: [alist_net]
