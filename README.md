@@ -82,18 +82,25 @@ bash setup.sh --uninstall
 ## 🔧 安装后常用命令
 
 ```bash
-# 查看实时日志
-docker compose logs -f tg_downloader
+查看日志:
 
-# 停止机器人
-docker compose stop tg_downloader
+docker compose -f /root/tg_download/docker-compose.yml logs -f
 
-# 重启机器人
-docker compose restart tg_downloader
+停止:
+
+docker compose -f /root/tg_download/docker-compose.yml stop
+
+重启:
+
+docker compose -f /root/tg_download/docker-compose.yml restart
+
+卸载:
+
+bash setup.sh --uninstall
 
 # 修改参数（如换 Bot Token）
 # 1. 直接编辑 .env 文件
-# 2. 重启生效：docker compose restart tg_downloader
+# 2. 重启生效：docker compose restart tg_download
 ```
 
 ---
@@ -131,4 +138,4 @@ sudo systemctl restart docker
 ```
 
 **Q: 机器人没有回应？**  
-A: 用 `docker compose logs -f tg_downloader` 查看报错，常见原因是 Token 填错或用户 ID 不在白名单。
+A: 用 `docker compose logs -f tg_download` 查看报错，常见原因是 Token 填错或用户 ID 不在白名单。
