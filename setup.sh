@@ -39,6 +39,12 @@ write_dockerfile() {
     cat > "$dir/Dockerfile" <<'DOCKERFILE'
 FROM python:3.11-slim
 WORKDIR /app
+
+# 安装 ffmpeg (供 yt-dlp 合并高画质音视频使用)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
@@ -157,13 +163,12 @@ EOF
 
     [[ -f "$dir/bot.py" ]] || error "找不到 bot.py，请确认文件在脚本执行目录下。"
 
-    # 【修复 2.2】补全写入 requirements.txt 的依赖库
     cat > "$dir/requirements.txt" <<'REQ'
 pyrogram==2.0.106
 tgcrypto
 python-dotenv
-aiohttp
-beautifulsoup4
+yt-dlp
+gallery-dl
 REQ
 
     write_dockerfile "$dir"
