@@ -152,7 +152,8 @@ def db_register(path: Path, media_type: str, uid: int | None) -> int:
                VALUES(?,?,?,?,?,?)
                ON CONFLICT(path) DO UPDATE SET
                  file_size=excluded.file_size,
-                 downloaded_at=excluded.downloaded_at""",
+                 downloaded_at=excluded.downloaded_at,
+                 downloaded_by=excluded.downloaded_by""",
             (key, media_type, path.name, stat.st_size,
              datetime.now().strftime("%Y-%m-%d %H:%M:%S"), uid),
         )
@@ -260,7 +261,7 @@ def safe_path(save_dir: Path, name: str) -> Path:
     return p
 
 def is_allowed(uid: int | None) -> bool:
-    if uid is None: return True
+    if uid is None: return False  # 匿名/频道消息无法验证身份，拒绝放行
     return not ALLOWED_USERS or uid in ALLOWED_USERS
 
 def detect_media(msg: Message) -> tuple[str, str] | tuple[None, None]:
@@ -295,7 +296,7 @@ def _list_files_sync(mtype: str) -> list[tuple[int, Path, int, str]]:
             "SELECT id, path, file_size, downloaded_at FROM files WHERE media_type=? ORDER BY downloaded_at DESC", 
             (mtype,)
         ).fetchall()
-    return [(r["id"], Path(r["path"]), r["file_size"], r["downloaded_at"]) for row in rows]
+    return [(r["id"], Path(r["path"]), r["file_size"], r["downloaded_at"]) for r in rows]
 
 async def list_files_for_type(mtype: str) -> list[tuple[int, Path, int, str]]:
     return await asyncio.to_thread(_list_files_sync, mtype)
@@ -711,12 +712,13 @@ def _batch_delete_sync(mtype: str):
         if not base.exists(): continue
         for f in [f for f in base.rglob("*") if f.is_file()]:
             sz      = f.stat().st_size
-            fid_key = _PATH_TO_FID.get(str(f.resolve()))
+            f_key   = str(f.resolve())   # resolve() 须在 unlink() 前保存
+            fid_key = _PATH_TO_FID.get(f_key)
             f.unlink()
             deleted_cnt += 1; deleted_size += sz
             if fid_key:
                 _FILE_REGISTRY.pop(fid_key, None)
-                _PATH_TO_FID.pop(str(f.resolve()), None)
+                _PATH_TO_FID.pop(f_key, None)
                 with _db() as conn:
                     conn.execute("DELETE FROM files WHERE id=?", (fid_key,))
         for d in sorted(base.rglob("*"), reverse=True):
@@ -790,11 +792,8 @@ async def on_callback(_, cq: CallbackQuery):
         p   = _lookup_path(fid)
         if not p:
             await cq.answer("❌ 文件不存在", show_alert=True); return
-        mtype = next(
-            (mt for mt, base in MEDIA_DIRS.items()
-             if base in p.parents or base == p.parent.parent),
-            "document",
-        )
+        row   = await async_db_get_row(fid)
+        mtype = row["media_type"] if row else "document"
         files = await list_files_for_type(mtype)
         page  = next((i // PAGE_SIZE for i, (f_id, _, _, _) in enumerate(files) if f_id == fid), 0)
         await cq.message.edit_text(await text_file_info(fid),
@@ -808,11 +807,8 @@ async def on_callback(_, cq: CallbackQuery):
         p = _lookup_path(fid)
         if not p:
             await cq.answer("❌ 文件不存在", show_alert=True); return
-        mtype = next(
-            (mt for mt, base in MEDIA_DIRS.items()
-             if base in p.parents or base == p.parent.parent),
-            "document",
-        )
+        row   = await async_db_get_row(fid)
+        mtype = row["media_type"] if row else "document"
         await cq.message.edit_text(
             await text_file_info(fid),
             reply_markup=kb_file_info(fid, mtype, 0, back_search=keyword),
@@ -829,8 +825,7 @@ async def on_callback(_, cq: CallbackQuery):
         await cq.answer()
 
     elif data.startswith("search:"):
-        parts   = data.split(":")
-        keyword = parts[1]; page = int(parts[2])
+        _, keyword, page_str = data.split(":", 2); page = int(page_str)
         rows    = await async_db_search(keyword)
         await cq.message.edit_text(
             text_search_results(keyword, rows, page),
