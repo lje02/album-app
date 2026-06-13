@@ -4,5 +4,6 @@ python-dotenv
 aiohttp
 beautifulsoup4
 yt-dlp
-gallery-do
+gallery-dl
+
 
