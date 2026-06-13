@@ -1,3 +1,6 @@
 pyrogram==2.0.106
-TgCrypto==1.2.5
-python-dotenv==1.0.1
+tgcrypto
+python-dotenv
+aiohttp
+beautifulsoup4
+
