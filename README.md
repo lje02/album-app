@@ -33,17 +33,17 @@ apt update && apt install python3.11-venv -y
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/lje02/tg_downloader.git
-cd tg_downloader
+git clone https://github.com/lje02/tg_download.git
+cd tg_download
 
 https://github.com/你的用户名/你的仓库名.git
 cd 你的仓库名
 
 # 2. 给脚本加执行权限
-chmod +x setup.sh
+chmod +x install.sh
 
 # 3. 运行安装向导
-bash setup.sh
+bash install.sh
 ```
 
 脚本会依次询问：
@@ -69,7 +69,7 @@ bash setup.sh
 ## 🛑 卸载
 
 ```bash
-bash setup.sh --uninstall
+bash install.sh --uninstall
 ```
 
 卸载流程会询问：
@@ -83,17 +83,17 @@ bash setup.sh --uninstall
 
 ```bash
 # 查看实时日志
-docker compose logs -f tg_downloader
+docker compose logs -f tg_download
 
 # 停止机器人
-docker compose stop tg_downloader
+docker compose stop tg_download
 
 # 重启机器人
-docker compose restart tg_downloader
+docker compose restart tg_download
 
 # 修改参数（如换 Bot Token）
 # 1. 直接编辑 .env 文件
-# 2. 重启生效：docker compose restart tg_downloader
+# 2. 重启生效：docker compose restart tg_download
 ```
 
 ---
@@ -131,4 +131,4 @@ sudo systemctl restart docker
 ```
 
 **Q: 机器人没有回应？**  
-A: 用 `docker compose logs -f tg_downloader` 查看报错，常见原因是 Token 填错或用户 ID 不在白名单。
+A: 用 `docker compose logs -f tg_download` 查看报错，常见原因是 Token 填错或用户 ID 不在白名单。
