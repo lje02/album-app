@@ -20,6 +20,7 @@ import logging
 import os
 import sqlite3
 import time
+import re as _re
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +33,8 @@ from pyrogram.types import (
     InlineKeyboardMarkup,
     Message,
 )
+from url_scanner import scan_and_download, MIN_FILE_SIZE, MIN_VIDEO_SIZE, MIN_AUDIO_SIZE
+from url_scanner import fmt_size as sc_fmt   # 避免与主脚本同名函数冲突
 
 # ══════════════════════════════════════════════
 #  加载 .env
@@ -80,7 +83,7 @@ def get_semaphore() -> asyncio.Semaphore:
 # ══════════════════════════════════════════════
 MEDIA_DIRS: dict[str, Path] = {
     "photo"     : DOWNLOAD_ROOT / "photos",
-    "video"     : DOWNLOAD_ROOT / "downloads" / "videos" if (DOWNLOAD_ROOT / "downloads" / "videos").exists() else DOWNLOAD_ROOT / "videos", 
+    "video"     : DOWNLOAD_ROOT / "videos",
     "audio"     : DOWNLOAD_ROOT / "audios",
     "voice"     : DOWNLOAD_ROOT / "voices",
     "document"  : DOWNLOAD_ROOT / "documents",
@@ -208,6 +211,7 @@ bot = Client(
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN,
+    workdir="session",
 )
 
 # ══════════════════════════════════════════════
@@ -1025,12 +1029,6 @@ async def handle_media(_client: Client, msg: Message):
             ],
         ]),
     )
-    
-from url_scanner import scan_and_download, MIN_FILE_SIZE, MIN_VIDEO_SIZE, MIN_AUDIO_SIZE
-from url_scanner import fmt_size as sc_fmt   # 避免与主脚本同名函数冲突
-
-import re as _re
-
 
 # ── URL 检测正则 ──────────────────────────────────────────────────
 _URL_RE = _re.compile(
