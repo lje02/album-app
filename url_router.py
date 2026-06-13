@@ -81,29 +81,46 @@ async def run_ytdlp(url: str, save_dir: Path, status_cb=None, raise_error: bool 
 async def run_gallerydl(url: str, save_dir: Path, status_cb=None) -> list[Path]:
     """异步调度 gallery-dl"""
     save_dir.mkdir(parents=True, exist_ok=True)
-    cmd = ["gallery-dl", "--directory", str(save_dir), url]
+    # --print filename 让 gallery-dl 在每个文件下载完成后输出实际保存路径，比解析日志更可靠
+    cmd = ["gallery-dl", "--directory", str(save_dir), "--print", "filename", url]
     
     process = await asyncio.create_subprocess_exec(
-        *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
     )
 
     downloaded_files = []
     last_update = time.monotonic()
 
+    async def read_stderr():
+        """在后台读取 stderr 用于进度提示，防止缓冲区满导致进程挂起"""
+        while True:
+            line = await process.stderr.readline()
+            if not line:
+                break
+            line_str = line.decode('utf-8', errors='ignore').strip()
+            nonlocal last_update
+            if line_str.startswith("#"):
+                now = time.monotonic()
+                if status_cb and (now - last_update > 2.0):
+                    await status_cb(f"🖼️ **gallery-dl 抓取中**\n`{line_str}`")
+                    last_update = now
+
+    stderr_task = asyncio.create_task(read_stderr())
+
+    # stdout 每行就是一个已下载文件的绝对路径
     while True:
         line = await process.stdout.readline()
-        if not line: break
+        if not line:
+            break
         line_str = line.decode('utf-8', errors='ignore').strip()
-        
-        if line_str.startswith("#"):
-            now = time.monotonic()
-            if status_cb and (now - last_update > 2.0):
-                await status_cb(f"🖼️ **gallery-dl 抓取中**\n`{line_str}`")
-                last_update = now
-        elif line_str.startswith("/") or line_str[1:3] == ":\\":
-            downloaded_files.append(Path(line_str))
+        if line_str:
+            p = Path(line_str)
+            if p.exists():
+                downloaded_files.append(p)
 
     await process.wait()
+    await stderr_task
+
     if process.returncode != 0 and not downloaded_files:
         raise RuntimeError(f"gallery-dl 异常退出 (状态码 {process.returncode})")
         
@@ -144,29 +161,30 @@ async def run_generic_fallback(url: str, save_dir: Path, status_cb=None) -> list
             
         if status_cb: await status_cb(f"🕸️ 嗅探到 {len(targets)} 个媒体，开始并发拉取 (过滤图标中)...")
         
-        async def download_one(dl_url, index):
+        async def download_one(dl_session: aiohttp.ClientSession, dl_url: str, index: int):
             try:
                 ext = "." + dl_url.lower().split("?")[0].split(".")[-1]
                 if ext not in valid_exts: ext = ".jpg"
                 file_name = f"web_generic_{int(time.time())}_{index:03d}{ext}"
                 save_path = save_dir / file_name
                 
-                async with aiohttp.ClientSession() as dl_session:
-                    async with dl_session.get(dl_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30) as r:
-                        if r.status == 200:
-                            content = await r.read()
-                            # 过滤小于 50KB 的网站 Logo 和占位图
-                            if len(content) > 51200:
-                                with open(save_path, "wb") as f:
-                                    f.write(content)
-                                return save_path
+                async with dl_session.get(dl_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=aiohttp.ClientTimeout(total=30)) as r:
+                    if r.status == 200:
+                        content = await r.read()
+                        # 过滤小于 50KB 的网站 Logo 和占位图
+                        if len(content) > 51200:
+                            with open(save_path, "wb") as f:
+                                f.write(content)
+                            return save_path
             except Exception:
                 pass
             return None
             
         # 并发执行，最多限制提取前 60 个，防止遇到超级大页面炸内存
-        tasks = [download_one(u, i) for i, u in enumerate(targets[:60])]
-        results = await asyncio.gather(*tasks)
+        # 复用同一个 ClientSession，避免每个并发任务各自新建 session 耗尽文件描述符
+        async with aiohttp.ClientSession() as shared_session:
+            tasks = [download_one(shared_session, u, i) for i, u in enumerate(targets[:60])]
+            results = await asyncio.gather(*tasks)
         downloaded_files = [r for r in results if r is not None]
         
     except Exception as e:
@@ -206,4 +224,3 @@ async def smart_download(url: str, media_roots: dict, status_cb=None) -> tuple[s
         files = await run_generic_fallback(url, save_dir_p, status_cb)
         
         return "泛用网页爬虫", files
-
