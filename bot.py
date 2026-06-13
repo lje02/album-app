@@ -1122,13 +1122,13 @@ async def _do_url_download(msg: Message, url: str):
         
         # 根据后缀判断媒体类型并入库
         ext = p.suffix.lower()
-        if ext in (".mp4", ".mkv", ".webm"):
+        if ext in (".mp4", ".mkv", ".webm", ".avi", ".mov", ".flv", ".ts", ".m4v", ".rmvb"):
             mtype = "video"
             video_cnt += 1
-        elif ext in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
+        elif ext in (".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".bmp", ".jfif", ".heic"):
             mtype = "photo"
             photo_cnt += 1
-        elif ext in (".mp3", ".m4a", ".flac"):
+        elif ext in (".mp3", ".m4a", ".flac", ".aac", ".ogg", ".wav", ".opus", ".wma"):
             mtype = "audio"
             audio_cnt += 1
         else:
