@@ -1,0 +1,24 @@
+services:
+  alist:
+    image: xhofe/alist:latest
+    restart: unless-stopped
+    environment:
+      - PUID=0
+      - PGID=0
+      - UMASK=022
+    volumes:
+      - ./data:/opt/alist/data
+      - /root/tg_downloader/bots/downloader/downloads:/media
+    ports:
+      - "127.0.0.1:5244:5244"
+    networks: [alist_net]
+    healthcheck:
+      # 替换为 alpine 自带的 wget，并检查主页状态
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5244/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  alist_net:
+    driver: bridge
