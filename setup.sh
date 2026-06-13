@@ -74,7 +74,7 @@ show_banner() {
     echo "     ██║   ╚██████╔╝    ██████╔╝╚██████╔╝   ██║   "
     echo "     ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝    ╚═╝   "
     echo -e "${RESET}"
-    echo -e "  ${BOLD}Telegram 机器人工具箱  —  一键安装向导${RESET}"
+    echo -e "  ${BOLD}Telegram 下载机器人  —  一键安装向导${RESET}"
     echo -e "  ─────────────────────────────────────────────"
     echo
 }
@@ -87,66 +87,31 @@ do_uninstall() {
     echo -e "${RED}${BOLD}  ⚠️  卸载向导${RESET}"
     echo
 
-    declare -a installed_dirs=()
-    declare -a installed_names=()
-    local candidates=("downloader:📥 下载机器人" "relay:💬 客服中转机器人")
+    local dir="$ROOT_DIR"
 
-    for item in "${candidates[@]}"; do
-        local bdir="${item%%:*}"
-        local bname="${item##*:}"
-        if [[ -f "$ROOT_DIR/bots/$bdir/docker-compose.yml" ]]; then
-            installed_dirs+=("$bdir")
-            installed_names+=("$bname")
-        fi
-    done
-
-    if [[ ${#installed_dirs[@]} -eq 0 ]]; then
-        warn "未检测到任何已安装的机器人。"
+    if [[ ! -f "$dir/docker-compose.yml" ]]; then
+        warn "未检测到已安装的机器人。"
         exit 0
     fi
 
-    echo -e "  检测到以下已安装的机器人："
-    echo
-    for i in "${!installed_dirs[@]}"; do
-        echo -e "  ${BOLD}[$((i+1))]${RESET} ${installed_names[$i]}"
-    done
-    echo -e "  ${BOLD}[A]${RESET} 全部卸载"
-    echo
+    echo -e "  ${RED}卸载: 📥 下载机器人${RESET}"
+    read -rp "  确认？(y/N): " confirm
+    [[ "${confirm,,}" == "y" ]] || { warn "已取消。"; exit 0; }
 
-    read -rp "  请选择要卸载的编号（或 A）: " choice
+    docker compose -f "$dir/docker-compose.yml" down --rmi local 2>/dev/null || true
 
-    local targets_d=() targets_n=()
-    if [[ "${choice^^}" == "A" ]]; then
-        targets_d=("${installed_dirs[@]}"); targets_n=("${installed_names[@]}")
-    elif [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#installed_dirs[@]} )); then
-        targets_d=("${installed_dirs[$((choice-1))]}"); targets_n=("${installed_names[$((choice-1))]}")
-    else
-        error "无效选择。"
+    read -rp "  删除数据文件（下载目录/数据库）？(y/N): " del_data
+    if [[ "${del_data,,}" == "y" ]]; then
+        rm -rf "$dir/downloads" "$dir/session" "$dir"/*.db 2>/dev/null || true
+        success "数据已删除。"
     fi
 
-    for i in "${!targets_d[@]}"; do
-        local bdir="$ROOT_DIR/bots/${targets_d[$i]}"
-        local bname="${targets_n[$i]}"
-        echo
-        echo -e "  ${RED}卸载: ${bname}${RESET}"
-        read -rp "  确认？(y/N): " confirm
-        [[ "${confirm,,}" == "y" ]] || { warn "跳过 ${bname}"; continue; }
+    rm -f "$dir/docker-compose.yml" "$dir/Dockerfile" 2>/dev/null || true
 
-        docker compose -f "$bdir/docker-compose.yml" down --rmi local 2>/dev/null || true
+    read -rp "  删除配置文件 .env？(y/N): " del_env
+    [[ "${del_env,,}" == "y" ]] && rm -f "$dir/.env" && success "配置已删除。"
 
-        read -rp "  删除数据文件（下载目录/数据库）？(y/N): " del_data
-        if [[ "${del_data,,}" == "y" ]]; then
-            rm -rf "$bdir/downloads" "$bdir/session" "$bdir"/*.db 2>/dev/null || true
-            success "数据已删除。"
-        fi
-
-        rm -f "$bdir/docker-compose.yml" "$bdir/Dockerfile" 2>/dev/null || true
-
-        read -rp "  删除配置文件 .env / config.py？(y/N): " del_env
-        [[ "${del_env,,}" == "y" ]] && rm -f "$bdir/.env" "$bdir/config.py" && success "配置已删除。"
-
-        success "${bname} 卸载完成。"
-    done
+    success "卸载完成。"
     echo
     exit 0
 }
@@ -155,8 +120,7 @@ do_uninstall() {
 #  安装：下载机器人
 # ══════════════════════════════════════════════════════════════
 install_downloader() {
-    local dir="$ROOT_DIR/bots/downloader"
-    mkdir -p "$dir"
+    local dir="$ROOT_DIR"
 
     title "配置下载机器人参数"
     echo -e "  获取 API_ID / API_HASH → ${CYAN}https://my.telegram.org${RESET}"
@@ -225,60 +189,6 @@ YAML
 }
 
 # ══════════════════════════════════════════════════════════════
-#  安装：客服中转机器人
-# ══════════════════════════════════════════════════════════════
-install_relay() {
-    local dir="$ROOT_DIR/bots/relay"
-    mkdir -p "$dir"
-
-    title "配置客服中转机器人参数"
-    echo -e "  获取 BOT_TOKEN → 与 ${CYAN}@BotFather${RESET} 对话"
-    echo -e "  查询用户ID     → 给 ${CYAN}@userinfobot${RESET} 发任意消息"
-    echo
-
-    local BOT_TOKEN OWNER_ID anon_choice ANON_MODE
-    prompt_required BOT_TOKEN "BOT_TOKEN   (xxx:yyy 格式)"
-    prompt_required OWNER_ID  "主人的用户 ID (纯数字)"
-
-    [[ "$OWNER_ID" =~ ^[0-9]+$ ]] || error "用户 ID 必须是纯数字"
-
-    echo
-    echo -e "  匿名模式: ${GREEN}y${RESET}=只显示编号  ${YELLOW}n${RESET}=显示真实用户名（推荐）"
-    read -rp "  启用匿名模式? [y/N]: " anon_choice
-    [[ "${anon_choice,,}" == "y" ]] && ANON_MODE="True" || ANON_MODE="False"
-
-    cat > "$dir/config.py" <<EOF
-BOT_TOKEN      = "${BOT_TOKEN}"
-OWNER_ID       = ${OWNER_ID}
-ANONYMOUS_MODE = ${ANON_MODE}
-EOF
-
-    touch "$dir/.env"
-
-    [[ -f "$dir/bot.py" ]] || cp "$ROOT_DIR/relay_bot.py" "$dir/bot.py" 2>/dev/null \
-        || error "找不到 relay_bot.py，请确认文件在仓库根目录。"
-
-    cat > "$dir/requirements.txt" <<'REQ'
-python-telegram-bot==20.7
-REQ
-
-    write_dockerfile "$dir"
-
-    cat > "$dir/docker-compose.yml" <<YAML
-services:
-  tg_relay:
-    build: .
-    container_name: tg_relay
-    restart: unless-stopped
-    env_file:
-      - .env
-YAML
-
-    start_bot "$dir" "tg_relay" "💬 客服中转机器人"
-    echo
-}
-
-# ══════════════════════════════════════════════════════════════
 #  主入口
 # ══════════════════════════════════════════════════════════════
 [[ "${1:-}" == "--uninstall" ]] && do_uninstall
@@ -286,29 +196,4 @@ YAML
 show_banner
 check_docker
 
-title "请选择要安装的机器人"
-echo
-
-# 显示菜单，标记已安装
-show_item() {
-    local num="$1" bdir="$2" name="$3" desc="$4"
-    local status=""
-    [[ -f "$ROOT_DIR/bots/$bdir/docker-compose.yml" ]] && status=" ${GREEN}[已安装]${RESET}"
-    echo -e "  ${BOLD}[$num]${RESET} ${name}${status}"
-    echo -e "       $desc"
-    echo
-}
-
-show_item 1 "downloader" "📥 下载机器人"      "自动下载 Telegram 媒体，支持8种类型分类归档"
-show_item 2 "relay"      "💬 客服中转机器人"  "将用户消息中转给主人，支持拉黑/屏蔽/匿名"
-echo -e "  ${BOLD}[Q]${RESET} 退出"
-echo
-
-read -rp "  请输入编号: " choice
-
-case "$choice" in
-    1) install_downloader ;;
-    2) install_relay ;;
-    [Qq]) echo "已退出。"; exit 0 ;;
-    *) error "无效选择: $choice" ;;
-esac
+install_downloader
