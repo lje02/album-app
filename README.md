@@ -69,7 +69,7 @@ bash setup.sh
 ## 🛑 卸载
 
 ```bash
-bash install.sh --uninstall
+bash setup.sh --uninstall
 ```
 
 卸载流程会询问：
