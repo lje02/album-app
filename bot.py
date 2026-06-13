@@ -1086,7 +1086,7 @@ async def handle_text_url(_, msg: Message):
 # ── 核心执行 ─────────────────────────────────────────────────────
 async def _do_url_download(msg: Message, url: str):
     uid       = _uid(msg)
-    status    = await msg.reply_text(f"🌐 正在分析链接...\n`{url[:80]}`")
+    status    = await msg.reply_text(f"🌐 正在分析链接特征...\n`{url[:80]}`")
     last_text = [""]
 
     async def update_status(text: str):
@@ -1097,69 +1097,55 @@ async def _do_url_download(msg: Message, url: str):
         except Exception:
             pass
 
-    # 注册回调
-    async def reg(path: Path, mtype: str, u: int | None):
-        await async_db_register(path, mtype, u)
-
-    # 各媒体类型的保存根目录（直接用主脚本的 MEDIA_DIRS）
-    media_roots = {
-        "photo": MEDIA_DIRS.get("photo", DOWNLOAD_ROOT / "photos"),
-        "video": MEDIA_DIRS.get("video", DOWNLOAD_ROOT / "videos"),
-        "audio": MEDIA_DIRS.get("audio", DOWNLOAD_ROOT / "audios"),
-    }
-
     try:
-        result = await scan_and_download(
-            url         = url,
-            save_root   = media_roots["photo"],
-            min_size    = MIN_FILE_SIZE,
-            status_cb   = update_status,
-            register_cb = reg,
-            uid         = uid,
-            media_roots = media_roots,
+        # 调用智能路由下载
+        engine, files = await smart_download(
+            url=url,
+            media_roots=MEDIA_DIRS,
+            status_cb=update_status
         )
     except Exception as exc:
-        logger.error(f"URL 下载失败 [{url}]: {exc}")
-        await status.edit_text(
-            f"❌ **下载失败**\n\n`{exc}`",
-            reply_markup=kb_back("menu:home"),
-        )
+        logger.error(f"引擎执行失败 [{url}]: {exc}")
+        await status.edit_text(f"❌ **执行崩溃**\n`{exc}`", reply_markup=kb_back("menu:home"))
         return
 
-    by_type = result.get("by_type", {})
-    folder  = result["folder"]
-    total   = result["total_found"]
-    skipped = result["skipped"]
-    dl      = result["downloaded"]
-    fail    = result["failed"]
+    if not files:
+        await status.edit_text(f"📭 引擎 `{engine}` 运行结束，未获取到任何媒体文件。")
+        return
 
-    # ── 结果消息 ──────────────────────────────────────────────────
-    lines = [f"✅ **URL 批量下载完成！**\n"]
-    lines.append(f"🌐 `{url[:60]}`")
-    lines.append(f"📁 目录：`{folder}`\n")
-    lines.append(f"🔍 发现媒体：**{total}** 个  过滤：**{skipped}** 个\n")
+    # 结果入库并生成报告
+    lines = [f"✅ **{engine} 下载完成！**\n", f"🌐 `{url[:60]}`\n"]
+    
+    video_cnt = photo_cnt = audio_cnt = 0
+    for p in files:
+        if not p.exists(): continue
+        
+        # 根据后缀判断媒体类型并入库
+        ext = p.suffix.lower()
+        if ext in (".mp4", ".mkv", ".webm"):
+            mtype = "video"
+            video_cnt += 1
+        elif ext in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
+            mtype = "photo"
+            photo_cnt += 1
+        elif ext in (".mp3", ".m4a", ".flac"):
+            mtype = "audio"
+            audio_cnt += 1
+        else:
+            mtype = "document"
+            
+        await async_db_register(p, mtype, uid)
 
-    for mtype, emoji in [("photo","🖼️"), ("video","🎬"), ("audio","🎵")]:
-        info = by_type.get(mtype, {})
-        d, f_ = info.get("downloaded", 0), info.get("failed", 0)
-        if d or f_:
-            lines.append(f"  {emoji} {mtype}：✅ {d} 个" + (f"  ❌ {f_} 失败" if f_ else ""))
-
-    lines.append(f"\n⬇️ 合计下载：**{dl}** 个" + (f"  ❌ 失败 **{fail}** 个" if fail else ""))
-
-    # 动态按钮：根据实际下载了哪些类型生成浏览快捷键
+    if photo_cnt: lines.append(f"  🖼️ 图片：**{photo_cnt}** 个")
+    if video_cnt: lines.append(f"  🎬 视频：**{video_cnt}** 个")
+    if audio_cnt: lines.append(f"  🎵 音频：**{audio_cnt}** 个")
+    
+    # 动态构建浏览按钮
     type_buttons = []
-    browse_map = {"photo": ("🖼️ 浏览图片", "browse:photo:0"),
-                  "video": ("🎬 浏览视频", "browse:video:0"),
-                  "audio": ("🎵 浏览音频", "browse:audio:0")}
-    for mtype, (label, cb) in browse_map.items():
-        if by_type.get(mtype, {}).get("downloaded", 0) > 0:
-            type_buttons.append(InlineKeyboardButton(label, callback_data=cb))
-
-    kb_rows = []
-    if type_buttons:
-        # 每行最多 2 个按钮
-        kb_rows += [type_buttons[i:i+2] for i in range(0, len(type_buttons), 2)]
+    if photo_cnt: type_buttons.append(InlineKeyboardButton("🖼️ 浏览图片", callback_data="browse:photo:0"))
+    if video_cnt: type_buttons.append(InlineKeyboardButton("🎬 浏览视频", callback_data="browse:video:0"))
+    
+    kb_rows = [type_buttons] if type_buttons else []
     kb_rows.append([
         InlineKeyboardButton("📊 查看统计", callback_data="menu:status"),
         InlineKeyboardButton("🏠 主菜单",   callback_data="menu:home"),
@@ -1167,14 +1153,7 @@ async def _do_url_download(msg: Message, url: str):
 
     await status.edit_text(
         "\n".join(lines),
-        reply_markup=InlineKeyboardMarkup(kb_rows),
-    )
-    logger.info(
-        f"🌐 URL下载 [{url}] 完成: "
-        f"图片{by_type.get('photo',{}).get('downloaded',0)} "
-        f"视频{by_type.get('video',{}).get('downloaded',0)} "
-        f"音频{by_type.get('audio',{}).get('downloaded',0)} "
-        f"过滤{skipped} 失败{fail} 目录={folder}"
+        reply_markup=InlineKeyboardMarkup(kb_rows)
     )
     
 # ══════════════════════════════════════════════
