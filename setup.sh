@@ -155,13 +155,15 @@ PROGRESS_UPDATE_SEC=2.0
 DB_PATH=/app/tg_downloader.db
 EOF
 
-    [[ -f "$dir/bot.py" ]] || cp "$ROOT_DIR/downloader_bot.py" "$dir/bot.py" 2>/dev/null \
-        || error "找不到 downloader_bot.py，请确认文件在仓库根目录。"
+    [[ -f "$dir/bot.py" ]] || error "找不到 bot.py，请确认文件在脚本执行目录下。"
 
+    # 【修复 2.2】补全写入 requirements.txt 的依赖库
     cat > "$dir/requirements.txt" <<'REQ'
 pyrogram==2.0.106
 tgcrypto
 python-dotenv
+aiohttp
+beautifulsoup4
 REQ
 
     write_dockerfile "$dir"
