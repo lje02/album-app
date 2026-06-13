@@ -33,8 +33,7 @@ from pyrogram.types import (
     InlineKeyboardMarkup,
     Message,
 )
-from url_scanner import scan_and_download, MIN_FILE_SIZE, MIN_VIDEO_SIZE, MIN_AUDIO_SIZE
-from url_scanner import fmt_size as sc_fmt   # 避免与主脚本同名函数冲突
+from url_router import smart_download
 
 # ══════════════════════════════════════════════
 #  加载 .env
