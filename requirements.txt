@@ -3,4 +3,6 @@ tgcrypto
 python-dotenv
 aiohttp
 beautifulsoup4
+yt-dlp
+gallery-do
 
