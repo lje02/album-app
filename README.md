@@ -40,10 +40,10 @@ https://github.com/你的用户名/你的仓库名.git
 cd 你的仓库名
 
 # 2. 给脚本加执行权限
-chmod +x install.sh
+chmod +x setup.sh
 
 # 3. 运行安装向导
-bash install.sh
+bash setup.sh
 ```
 
 脚本会依次询问：
@@ -83,17 +83,17 @@ bash install.sh --uninstall
 
 ```bash
 # 查看实时日志
-docker compose logs -f tg_download
+docker compose logs -f tg_downloader
 
 # 停止机器人
-docker compose stop tg_download
+docker compose stop tg_downloader
 
 # 重启机器人
-docker compose restart tg_download
+docker compose restart tg_downloader
 
 # 修改参数（如换 Bot Token）
 # 1. 直接编辑 .env 文件
-# 2. 重启生效：docker compose restart tg_download
+# 2. 重启生效：docker compose restart tg_downloader
 ```
 
 ---
@@ -131,4 +131,4 @@ sudo systemctl restart docker
 ```
 
 **Q: 机器人没有回应？**  
-A: 用 `docker compose logs -f tg_download` 查看报错，常见原因是 Token 填错或用户 ID 不在白名单。
+A: 用 `docker compose logs -f tg_downloader` 查看报错，常见原因是 Token 填错或用户 ID 不在白名单。
